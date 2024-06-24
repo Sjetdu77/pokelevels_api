@@ -1,3 +1,4 @@
+from urllib import request as R
 # parsing data from the client
 from rest_framework.parsers import JSONParser
 from rest_framework.request import Request
@@ -5,6 +6,7 @@ from rest_framework.request import Request
 from django.views.decorators.csrf import csrf_exempt
 # for sending response to the client
 from django.http import HttpResponse, JsonResponse
+from bs4 import BeautifulSoup
 from .models import Game, Specie, Route, Wild, Region, GameRegion
 from .serializers import GameSerializer, SpecieSerializer, RouteSerializer, WildSerializer, RegionSerializer, GameRegionSerializer
 
@@ -312,3 +314,218 @@ def fill_species(request):
     elif (request.method == 'DELETE'):
         Specie.objects.all().delete()
         return JsonResponse({}, status=201)
+    
+    return JsonResponse({ 'error': 'No corresponding method' }, status=404)
+
+@csrf_exempt
+def fill_xp_species(request):
+    if request.method == 'GET':
+        objects = {}
+        headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"}
+
+        request_ix = R.Request('https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_effort_value_yield_(Generation_IX)', headers=headers)
+        site_ix = R.urlopen(request_ix).read()
+        soup_site_ix = BeautifulSoup(str(site_ix), features="html.parser")
+        pokelist_ix = soup_site_ix.find_all('table')[1]
+
+        for mon in pokelist_ix.find_all('tr'):
+            tds = mon.find_all('td')
+            if len(tds) > 0:
+                specie_id = tds[0].text.replace('\\n', '')
+                specie_xp = int(tds[3].text.replace('\\n', ''))
+
+                specie = Specie.objects.get(id=specie_id)
+                neededData = {
+                    'id': specie.id,
+                    'name': specie.name,
+                    'generation': specie.generation,
+                    'sprite': specie.sprite,
+                    'xp': specie_xp,
+                    'wilds': []
+                }
+
+                serializer = SpecieSerializer(specie, data=neededData)
+
+                if serializer.is_valid():
+                    serializer.save()
+                else: return JsonResponse(serializer.errors, status=402)
+
+        request_iv = R.Request('https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_effort_value_yield_(Generation_IV)', headers=headers)
+        site_iv = R.urlopen(request_iv).read()
+        soup_site_iv = BeautifulSoup(str(site_iv), features="html.parser")
+        pokelist_iv = soup_site_iv.find_all('table')[1]
+
+        for mon in pokelist_iv.find_all('tr'):
+            tds = mon.find_all('td')
+            if len(tds) > 0:
+                specie_id = tds[0].text.replace('\\n', '')
+                specie_xp = int(tds[3].text.replace('\\n', ''))
+
+                specie = Specie.objects.get(id=specie_id)
+                neededData = {
+                    'id': specie.id,
+                    'name': specie.name,
+                    'generation': specie.generation,
+                    'sprite': specie.sprite,
+                    'xp1_4': specie_xp,
+                    'wilds': []
+                }
+
+                serializer = SpecieSerializer(specie, data=neededData)
+                if serializer.is_valid():
+                    serializer.save()
+                    objects[specie_id] = serializer.data
+                else: return JsonResponse(serializer.errors, status=402)
+
+        return JsonResponse(objects, status=201)
+    
+    return JsonResponse({ 'error': 'No corresponding method' }, status=404)
+
+@csrf_exempt
+def create_zones(request):
+    if request.method == 'GET':
+        objects = {}
+
+        allGamesRegions = {
+            "Kanto": {
+                "Routes": {
+                    "1": range(1, 26),
+                    "2": range(1, 29),
+                    "3": range(1, 26),
+                    "4": range(1, 29),
+                    "7": range(1, 26),
+                },
+                "Games": [
+                    "Rouge",
+                    "Bleu",
+                    "Jaune",
+                    "Or",
+                    "Argent",
+                    "RougeFeu",
+                    "VertFeuille",
+                    "HeartGold",
+                    "SoulSilver",
+                    "Let's Go Pikachu",
+                    "Let's Go Evoli"
+                ]
+            },
+            "Johto": {
+                "Routes": {
+                    "2": range(29, 47),
+                    "4": range(29, 47)
+                },
+                "Games": [
+                    "Or",
+                    "Argent",
+                    "HeartGold",
+                    "SoulSilver"
+                ]
+            },
+            "Hoenn": {
+                "Routes": {
+                    "3": range(101, 135),
+                    "6": range(101, 135)
+                },
+                "Games": [
+                    "Rubis",
+                    "Saphir",
+                    "Emeraude",
+                    "Rubis Oméga",
+                    "Saphir Alpha",
+                ]
+            },
+            "Sinnoh": {
+                "Routes": {
+                    "4": range(201, 231),
+                    "8": range(201, 231)
+                },
+                "Games": [
+                    "Diamant",
+                    "Perle",
+                    "Diamant Etincelant",
+                    "Perle Scintillante",
+                    "Légendes : Arceus"
+                ]
+            },
+            "Unys": {
+                "Routes": {
+                    "5": range(1, 18)
+                },
+                "Games": [
+                    "Noir",
+                    "Blanc",
+                    "Noir 2",
+                    "Blanc 2"
+                ]
+            },
+            "Kalos": {
+                "Routes": {
+                    "6": range(1, 22)
+                },
+                "Games": [
+                    "X",
+                    "Y"
+                ]
+            },
+            "Alola": {
+                "Routes": {
+                    "7": range(1, 17)
+                },
+                "Games": [
+                    "Soleil",
+                    "Lune",
+                    "Ultra-Soleil",
+                    "Ultra-Lune"
+                ]
+            },
+            "Galar": {
+                "Routes": {
+                    "8": range(1, 11)
+                },
+                "Games": [
+                    "Epée",
+                    "Bouclier"
+                ]
+            }
+        }
+
+        for region in allGamesRegions:
+            here = allGamesRegions[region]
+            here["Region"] = Region.objects.get(name=region)
+            here["Games Datas"] = {}
+
+            for game in here["Games"]:
+                this_game = Game.objects.get(name=game)
+                here["Games Datas"][game] = {
+                    "Game": this_game,
+                    "Game Region": GameRegion.objects.get(game=this_game.id, region=here["Region"].id)
+                }
+
+        for region in allGamesRegions:
+            here = allGamesRegions[region]
+
+            for game in here["Games"]:
+                data_game = here["Games Datas"][game]
+
+                try:
+                    for i in here["Routes"][str(data_game["Game"].generation)]:
+                        data = {
+                            "name": f"Route {i}",
+                            "game_region": f"http://127.0.0.1:8000/api/games_regions/{data_game["Game Region"].id}/",
+                            "wilds": []
+                        }
+                        
+                        serializer = RouteSerializer(data=data, context={ 'request': Request(request) })
+                        if (serializer.is_valid()):
+                            serializer.save()
+                            objects[serializer.data['id']] = serializer.data
+                        else: return JsonResponse(serializer.errors, status=500)
+                except: print("No gen")
+
+        return JsonResponse(objects, status=201)
+    
+    elif request.method == 'DELETE':
+        Route.objects.all().delete()
+        return JsonResponse({}, status=201)
+    
+    return JsonResponse({ 'error': 'No corresponding method' }, status=404)

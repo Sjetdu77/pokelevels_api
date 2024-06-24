@@ -13,6 +13,8 @@ urlpatterns = [
     path('regions/', views.regions, name='regions'),
     path('regions/<int:pk>/', views.region_detail, name='region-detail'),
     path('games_regions/', views.games_regions, name='games-regions'),
-    path('games_regions/<int:pk>/', views.game_region_detail, name='game-region-detail'),
-    path('fill_species/', views.fill_species, name='fill-species')
+    path('games_regions/<int:pk>/', views.game_region_detail, name='gameregion-detail'),
+    path('fill_species/', views.fill_species),
+    path('fill_xp_species/', views.fill_xp_species),
+    path('create_zones/', views.create_zones)
 ]
