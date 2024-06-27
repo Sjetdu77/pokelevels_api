@@ -39,11 +39,27 @@ class Route(models.Model):
     game_region = models.ForeignKey(GameRegion, on_delete=models.CASCADE, related_name='routes')
 
     def __str__(self) -> str:
-        return f"{self.name} -> Pokémon {self.game.name}"
+        return f"{self.name} -> Pokémon {self.game_region.game.name}"
 
 class Wild(models.Model):
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='wilds')
     specie = models.ForeignKey(Specie, on_delete=models.CASCADE, related_name='wilds')
     probability = models.IntegerField()
-    lvlMin = models.IntegerField()
-    lvlMax = models.IntegerField()
+    lvl = models.IntegerField()
+    mode = models.CharField(max_length=3, default='gs',
+                            choices=[
+                                ('gs', 'Grass'),
+                                ('sf', 'Surf'),
+                                ('or', 'Old Rod'),
+                                ('gr', 'Good Rod'),
+                                ('sr', 'Super Rod')
+                            ]
+    )
+    morning = models.BooleanField(default=True)
+    day = models.BooleanField(default=True)
+    night = models.BooleanField(default=True)
+
+class Access(models.Model):
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='accesses')
+    number = models.IntegerField()
+    name = models.CharField(max_length=200)

@@ -7,8 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 # for sending response to the client
 from django.http import HttpResponse, JsonResponse
 from bs4 import BeautifulSoup
-from .models import Game, Specie, Route, Wild, Region, GameRegion
-from .serializers import GameSerializer, SpecieSerializer, RouteSerializer, WildSerializer, RegionSerializer, GameRegionSerializer
+from .models import *
+from .serializers import *
 
 import requests
 
@@ -38,7 +38,6 @@ def game_detail(request, pk):
     
     if (request.method == "GET"):
         serializer = GameSerializer(game, context={ 'request': Request(request) })
-        print(game)
         return JsonResponse(serializer.data, status=201)
     
     elif (request.method == 'PUT'):
@@ -137,10 +136,25 @@ def route_detail(request, pk):
     
     if (request.method == 'GET'):
         serializer = RouteSerializer(route, context={ 'request': Request(request) })
-        JsonResponse(serializer.data, status=201)
+        return JsonResponse(serializer.data, status=201)
     
     elif (request.method == 'PUT'):
         data = JSONParser().parse(request)
+
+        try: data['name']
+        except: data['name'] = route.name
+
+        try: data['game_region']
+        except: data['game_region'] = f"http://127.0.0.1:8000/api/games_regions/{route.game_region.id}/"
+
+        try: data['wilds']
+        except:
+            wilds = []
+            for w in route.wilds.all():
+                wilds.append(f"http://127.0.0.1:8000/api/wilds/{w.id}/")
+
+            data['wilds'] = wilds
+
         serializer = RouteSerializer(route, data=data, context={ 'request': Request(request) })
 
         if (serializer.is_valid()):
@@ -162,10 +176,21 @@ def wilds(request):
     
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
-        serializer = WildSerializer(data=data, context={ 'request': Request(request) })
-        if (serializer.is_valid()):
-            serializer.save()
-            return JsonResponse(serializer.data, status=201)
+        if (type(data) == dict):
+            serializer = WildSerializer(data=data, context={ 'request': Request(request) })
+            if (serializer.is_valid()):
+                serializer.save()
+                return JsonResponse(serializer.data, status=201)
+        else:
+            all_objects = []
+            for d in data:
+                serializer = WildSerializer(data=d, context={ 'request': Request(request) })
+                if (serializer.is_valid()):
+                    serializer.save()
+                    all_objects.append(serializer.data)
+                else:
+                    return JsonResponse(serializer.errors, status=402)
+            return JsonResponse({"objects": all_objects}, status=201)
         
     return JsonResponse(serializer.errors, status=400)
 
@@ -182,6 +207,22 @@ def wild_detail(request, pk):
     
     if (request.method == 'PUT'):
         data = JSONParser().parse(request)
+
+        try: data['route']
+        except: data['route'] = f"http://127.0.0.1:8000/api/routes/{wild.route.id}/"
+
+        try: data['specie']
+        except: data['specie'] = f"http://127.0.0.1:8000/api/species/{wild.specie.id}/"
+
+        try: data['probability']
+        except: data['probability'] = wild.probability
+
+        try: data['lvl']
+        except: data['lvl'] = wild.lvl
+
+        try: data['mode']
+        except: data['model'] = wild.mode
+
         serializer = WildSerializer(wild, data=data, context={ 'request': Request(request) })
 
         if (serializer.is_valid()):
@@ -260,7 +301,7 @@ def game_region_detail(request, pk):
     
     if (request.method == 'GET'):
         serializer = GameRegionSerializer(game_region, context={ 'request': Request(request) })
-        JsonResponse(serializer.data, status=201)
+        return JsonResponse(serializer.data, status=201)
 
     elif (request.method == 'PUT'):
         data = JSONParser().parse(request)
@@ -274,6 +315,47 @@ def game_region_detail(request, pk):
     
     elif(request.method == 'DELETE'):
         game_region.delete()
+        return HttpResponse(status=204)
+
+@csrf_exempt
+def accesses(request):
+    if request.method == "GET":
+        access = Access.objects.all()
+        serializer = AccessSerializer(access, many=True, context={ 'request': Request(request) })
+        return JsonResponse(serializer.data, safe=False)
+    
+    elif request.method == "POST":
+        data = JSONParser().parse(request)
+        serializer = AccessSerializer(data=data, context={ 'request': Request(request) })
+        if (serializer.is_valid()):
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
+        
+    return JsonResponse(serializer.errors, status=400)
+
+@csrf_exempt
+def accesses_detail(request, pk):
+    try:
+        access = Access.objects.get(pk=pk)
+    except:
+        return HttpResponse(status=404)
+    
+    if (request.method == 'GET'):
+        serializer = AccessSerializer(access, context={ 'request': Request(request) })
+        return JsonResponse(serializer.data, status=201)
+    
+    elif (request.method == 'PUT'):
+        data = JSONParser().parse(request)
+        serializer = AccessSerializer(access, data=data, context={ 'request': Request(request) })
+
+        if (serializer.is_valid()):
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
+        
+        return JsonResponse(serializer.errors, status=404)
+    
+    elif(request.method == 'DELETE'):
+        access.delete()
         return HttpResponse(status=204)
 
 @csrf_exempt
@@ -388,12 +470,173 @@ def create_zones(request):
 
         allGamesRegions = {
             "Kanto": {
-                "Routes": {
-                    "1": range(1, 26),
-                    "2": range(1, 29),
-                    "3": range(1, 26),
-                    "4": range(1, 29),
-                    "7": range(1, 26),
+                "Places": {
+                    1: [
+                        [
+                            "Route 1",
+                            "Route 22",
+                            "Route 2",
+                            "Forêt de Jade"
+                        ],
+                        [
+                            "Route 3",
+                            "Route 4",
+                            "Mont Sélénite - Rez-de-chaussée",
+                            "Mont Sélénite - Sous-Sol 1",
+                            "Mont Sélénite - Sous-Sol 2",
+                            "Route 24",
+                            "Route 25",
+                        ],
+                        [
+                            "Route 5",
+                            "Route 6",
+                            "Route 11",
+                            "Cave Taupiqueur"
+                        ],
+                        [
+                            "Route 7",
+                            "Route 8",
+                            "Route 9",
+                            "Route 10",
+                            "Grotte - Rez-de-chaussée",
+                            "Grotte - Sous-sol",
+                            "Tour Pokémon - Etages 3 et 4",
+                            "Tour Pokémon - Etage 5",
+                            "Tour Pokémon - Etage 6",
+                        ],
+                        [
+                            "Route 12",
+                            "Route 13",
+                            "Route 14",
+                            "Route 15",
+                            "Route 16",
+                            "Route 17",
+                            "Route 18",
+                        ],
+                        [
+                            "Centrale",
+                            "Chenal 19",
+                            "Chenal 20",
+                            "Îles Ecume - Rez-de-chaussée",
+                            "Îles Ecume - Sous-Sol 1",
+                            "Îles Ecume - Sous-Sol 2",
+                            "Îles Ecume - Sous-Sol 3",
+                            "Îles Ecume - Sous-Sol 4",
+                            "Chenal 21",
+                            "Route 23",
+                        ],
+                        [
+                            "Route Victoire"
+                        ],
+                        [
+                            "Grotte Inconnue"
+                        ]
+                    ],
+                    2: [],
+                    3: [
+                        [
+                            "Route 1",
+                            "Route 22",
+                            "Route 2",
+                            "Forêt de Jade"
+                        ],
+                        [
+                            "Route 3",
+                            "Route 4",
+                            "Mont Sélénite - Rez-de-chaussée",
+                            "Mont Sélénite - Sous-Sol 1",
+                            "Mont Sélénite - Sous-Sol 2",
+                            "Route 24",
+                            "Route 25",
+                        ],
+                        [
+                            "Route 5",
+                            "Route 6",
+                            "Route 11",
+                            "Cave Taupiqueur"
+                        ],
+                        [
+                            "Route 7",
+                            "Route 8",
+                            "Route 9",
+                            "Route 10",
+                            "Grotte - Rez-de-chaussée",
+                            "Grotte - Sous-sol",
+                            "Tour Pokémon - Etages 3 et 4",
+                            "Tour Pokémon - Etage 5",
+                            "Tour Pokémon - Etage 6",
+                        ],
+                        [
+                            "Route 12",
+                            "Route 13",
+                            "Route 14",
+                            "Route 15",
+                            "Route 16",
+                            "Route 17",
+                            "Route 18",
+                        ],
+                        [
+                            "Centrale",
+                            "Chenal 19",
+                            "Chenal 20",
+                            "Îles Ecume - Rez-de-chaussée",
+                            "Îles Ecume - Sous-Sol 1",
+                            "Îles Ecume - Sous-Sol 2",
+                            "Îles Ecume - Sous-Sol 3",
+                            "Îles Ecume - Sous-Sol 4",
+                            "Chenal 21",
+                            "Route 23",
+                        ],
+                        [
+                            "Île Sevii 1 - Ville",
+                            "Île Sevii 1 - Route Tison",
+                            "Île Sevii 1 - Mont Braise - Extérieur",
+                            "Île Sevii 1 - Mont Braise (Sommet) - Entrée et Sortie vers le sommet",
+                            "Île Sevii 1 - Mont Braise (Sommet) - Caverne principale",
+                            "Île Sevii 1 - Mont Braise (Rubis) - Entrée",
+                            "Île Sevii 1 - Mont Braise (Rubis) - Sous-Sol 1",
+                            "Île Sevii 1 - Mont Braise (Rubis) - Sous-Sol 2",
+                            "Île Sevii 1 - Mont Braise (Rubis) - Sous-Sol 3",
+                            "Île Sevii 2 - Cap Falaise",
+                            "Île Sevii 3 - Pont du Lien",
+                            "Île Sevii 3 - Bois Baies"
+                        ],
+                        [
+                            "Route Victoire"
+                        ],
+                        [
+                            "Île Sevii 1 - Plage Trésor",
+                            "Île Sevii 3 - Port",
+                        ],
+                        [
+                            "Île Sevii 4 - Ville",
+                            "Île Sevii 4 - Grotte de Glace - Entrée",
+                            "Île Sevii 4 - Grotte de Glace - Rez-de-chaussée",
+                            "Île Sevii 4 - Grotte de Glace - Crique",
+                            "Île Sevii 5 - Ville",
+                            "Île Sevii 5 - Pré",
+                            "Île Sevii 5 - Entrepôt Rocket",
+                            "Île Sevii 5 - Mémorial",
+                            "Île Sevii 5 - Labyrinthe d'O",
+                            "Île Sevii 5 - Camp de Vacances",
+                            "Île Sevii 5 - Grotte perdue - Salle sans objet",
+                            "Île Sevii 5 - Grotte perdue - Salle avec objet",
+                            "Île Sevii 6 - Ville",
+                            "Île Sevii 6 - Agualcanal",
+                            "Île Sevii 6 - Chemin Vert",
+                            "Île Sevii 6 - Forbuissons",
+                            "Île Sevii 6 - Grotte Métamo",
+                            "Île Sevii 6 - Île du Lointain",
+                            "Île Sevii 6 - Vallée Ruine",
+                            "Île Sevii 7 - Ville",
+                            "Île Sevii 7 - Canyon Sesor",
+                            "Île Sevii 7 - Entrée Canyon",
+                            "Île Sevii 7 - Ruines Tanoby",
+                            "Île Sevii 7 - Tour Dresseurs",
+                        ]
+                    ],
+                    4: [],
+                    7: [],
                 },
                 "Games": [
                     "Rouge",
@@ -407,12 +650,12 @@ def create_zones(request):
                     "SoulSilver",
                     "Let's Go Pikachu",
                     "Let's Go Evoli"
-                ]
+                ],
             },
             "Johto": {
-                "Routes": {
-                    "2": range(29, 47),
-                    "4": range(29, 47)
+                "Places": {
+                    2: [],
+                    4: []
                 },
                 "Games": [
                     "Or",
@@ -422,9 +665,9 @@ def create_zones(request):
                 ]
             },
             "Hoenn": {
-                "Routes": {
-                    "3": range(101, 135),
-                    "6": range(101, 135)
+                "Places": {
+                    3: [],
+                    6: []
                 },
                 "Games": [
                     "Rubis",
@@ -435,9 +678,9 @@ def create_zones(request):
                 ]
             },
             "Sinnoh": {
-                "Routes": {
-                    "4": range(201, 231),
-                    "8": range(201, 231)
+                "Places": {
+                    4: [],
+                    8: []
                 },
                 "Games": [
                     "Diamant",
@@ -448,8 +691,8 @@ def create_zones(request):
                 ]
             },
             "Unys": {
-                "Routes": {
-                    "5": range(1, 18)
+                "Places": {
+                    5: []
                 },
                 "Games": [
                     "Noir",
@@ -459,8 +702,8 @@ def create_zones(request):
                 ]
             },
             "Kalos": {
-                "Routes": {
-                    "6": range(1, 22)
+                "Places": {
+                    6: []
                 },
                 "Games": [
                     "X",
@@ -468,8 +711,8 @@ def create_zones(request):
                 ]
             },
             "Alola": {
-                "Routes": {
-                    "7": range(1, 17)
+                "Places": {
+                    7: []
                 },
                 "Games": [
                     "Soleil",
@@ -479,8 +722,8 @@ def create_zones(request):
                 ]
             },
             "Galar": {
-                "Routes": {
-                    "8": range(1, 11)
+                "Places": {
+                    8: []
                 },
                 "Games": [
                     "Epée",
@@ -508,18 +751,20 @@ def create_zones(request):
                 data_game = here["Games Datas"][game]
 
                 try:
-                    for i in here["Routes"][str(data_game["Game"].generation)]:
-                        data = {
-                            "name": f"Route {i}",
-                            "game_region": f"http://127.0.0.1:8000/api/games_regions/{data_game["Game Region"].id}/",
-                            "wilds": []
-                        }
-                        
-                        serializer = RouteSerializer(data=data, context={ 'request': Request(request) })
-                        if (serializer.is_valid()):
-                            serializer.save()
-                            objects[serializer.data['id']] = serializer.data
-                        else: return JsonResponse(serializer.errors, status=500)
+                    for i, places in enumerate(here["Places"][data_game["Game"].generation]):
+                        for p in places:
+                            data = {
+                               "name": p,
+                               "game_region": f"http://127.0.0.1:8000/api/games_regions/{data_game["Game Region"].id}/",
+                               "access": i,
+                               "wilds": []
+                            }
+                            
+                            serializer = RouteSerializer(data=data, context={ 'request': Request(request) })
+                            if (serializer.is_valid()):
+                               serializer.save()
+                               objects[serializer.data['id']] = serializer.data
+                            else: return JsonResponse(serializer.errors, status=500)
                 except: print("No gen")
 
         return JsonResponse(objects, status=201)
@@ -529,3 +774,15 @@ def create_zones(request):
         return JsonResponse({}, status=201)
     
     return JsonResponse({ 'error': 'No corresponding method' }, status=404)
+
+@csrf_exempt
+def routes_from_game(request, game_id):
+    if request.method == 'GET':
+        game = Game.objects.get(id=game_id)
+        game_region = game.associated_regions.all()
+        routes_found = game_region.routes.all()
+        serializer = RouteSerializer(routes_found, many=True, context={ 'request': Request(request) })
+        if (serializer.is_valid()):
+            return JsonResponse(serializer.data)
+        
+    return JsonResponse(serializer.errors, status=400)
