@@ -1,48 +1,56 @@
 from rest_framework import serializers
 from .models import *
 
-class GameSerializer(serializers.HyperlinkedModelSerializer):
-    associated_regions = serializers.HyperlinkedIdentityField(many=True, view_name='gameregion-detail')
-    accesses = serializers.HyperlinkedIdentityField(many=True, view_name='accesses-detail')
+class GameSerializer(serializers.ModelSerializer):
+    associated_regions = serializers.StringRelatedField(many=True)
+    accesses = serializers.PrimaryKeyRelatedField(many=True, queryset=Access.objects.all())
 
     class Meta:
         model = Game
         fields = ['id', 'name', 'generation', 'color', 'associated_regions', 'accesses']
         
-class SpecieSerializer(serializers.HyperlinkedModelSerializer):
-    wilds = serializers.HyperlinkedIdentityField(many=True, view_name='wild-detail')
+class SpecieSerializer(serializers.ModelSerializer):
+    wilds = serializers.StringRelatedField(many=True)
 
     class Meta:
         model = Specie
         fields = ['id', 'name', 'generation', 'sprite', 'xp', 'xp1_4', 'wilds']
 
-class RegionSerializer(serializers.HyperlinkedModelSerializer):
-    associated_games = serializers.HyperlinkedIdentityField(many=True, view_name='gameregion-detail')
+class RegionSerializer(serializers.ModelSerializer):
+    associated_games = serializers.StringRelatedField(many=True)
 
     class Meta:
         model = Region
         fields = ['id', 'name', 'associated_games']
 
-class GameRegionSerializer(serializers.HyperlinkedModelSerializer):
-    routes = serializers.HyperlinkedIdentityField(many=True, view_name='route-detail')
+class GameRegionSerializer(serializers.ModelSerializer):
+    routes = serializers.StringRelatedField(many=True)
+    game = serializers.SlugRelatedField(queryset=Game.objects.all(), slug_field='name')
+    region = serializers.SlugRelatedField(queryset=Region.objects.all(), slug_field='name')
 
     class Meta:
         model = GameRegion
         fields = ['id', 'game', 'region', 'routes']
 
-class RouteSerializer(serializers.HyperlinkedModelSerializer):
-    wilds = serializers.HyperlinkedIdentityField(many=True, view_name='wild-detail')
+class RouteSerializer(serializers.ModelSerializer):
+    wilds = serializers.StringRelatedField(many=True)
+    game_region = serializers.PrimaryKeyRelatedField(queryset=GameRegion.objects.all())
 
     class Meta:
         model = Route
         fields = ['id', 'name', 'access', 'game_region', 'wilds']
 
-class WildSerializer(serializers.HyperlinkedModelSerializer):
+class WildSerializer(serializers.ModelSerializer):
+    route = serializers.PrimaryKeyRelatedField(queryset=Route.objects.all())
+    specie = serializers.SlugRelatedField(slug_field='name', queryset=Specie.objects.all())
+
     class Meta:
         model = Wild
-        fields = ['id', 'route', 'specie', 'probability', 'lvl', "mode", "morning", "day", "night"]
+        fields = ['id', 'route', 'specie', 'probability', 'lvl', "mode", "time"]
 
-class AccessSerializer(serializers.HyperlinkedModelSerializer):
+class AccessSerializer(serializers.ModelSerializer):
+    game = serializers.SlugRelatedField(queryset=Game.objects.all(), slug_field='name')
+
     class Meta:
         model = Access
         fields = ['id', 'game', 'number', 'name']

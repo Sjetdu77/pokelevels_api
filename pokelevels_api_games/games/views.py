@@ -73,9 +73,13 @@ def species(request):
 @csrf_exempt
 def specie_detail(request, pk):
     try:
-        specie = Specie.objects.get(pk=pk)
+        int(pk)
+        specie = Specie.objects.get(pk="{:04d}".format(int(pk)))
     except:
-        return HttpResponse(status=404)
+        try:
+            specie = Specie.objects.get(name=pk)
+        except:
+            return HttpResponse(status=404)
     
     if (request.method == 'GET'):
         serializer = SpecieSerializer(specie, context={ 'request': Request(request) })
@@ -177,10 +181,26 @@ def wilds(request):
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
         if (type(data) == dict):
-            serializer = WildSerializer(data=data, context={ 'request': Request(request) })
-            if (serializer.is_valid()):
-                serializer.save()
-                return JsonResponse(serializer.data, status=201)
+            try:
+                all_objects = []
+                for aWild in data['wilds']:
+                    aWild['route'] = data['route']
+                    serializer = WildSerializer(data=aWild, context={ 'request': Request(request) })
+                    if (serializer.is_valid()):
+                        serializer.save()
+                        all_objects.append(serializer.data)
+                    else:
+                        return JsonResponse(serializer.errors, status=402)
+                return JsonResponse({
+                    "route": data['route'],
+                    "objects": all_objects
+                }, status=201)
+            
+            except:
+                serializer = WildSerializer(data=data, context={ 'request': Request(request) })
+                if (serializer.is_valid()):
+                    serializer.save()
+                    return JsonResponse(serializer.data, status=201)
         else:
             all_objects = []
             for d in data:
@@ -209,10 +229,10 @@ def wild_detail(request, pk):
         data = JSONParser().parse(request)
 
         try: data['route']
-        except: data['route'] = f"http://127.0.0.1:8000/api/routes/{wild.route.id}/"
+        except: data['route'] = wild.route.id
 
         try: data['specie']
-        except: data['specie'] = f"http://127.0.0.1:8000/api/species/{wild.specie.id}/"
+        except: data['specie'] = wild.specie.name
 
         try: data['probability']
         except: data['probability'] = wild.probability
@@ -221,7 +241,10 @@ def wild_detail(request, pk):
         except: data['lvl'] = wild.lvl
 
         try: data['mode']
-        except: data['model'] = wild.mode
+        except: data['mode'] = wild.mode
+
+        try: data['time']
+        except: data['time'] = wild.time
 
         serializer = WildSerializer(wild, data=data, context={ 'request': Request(request) })
 
@@ -380,7 +403,7 @@ def fill_species(request):
                         'id': "{:04d}".format(data['pokedex_id']),
                         'name': data['name']['fr'],
                         'generation': data['generation'],
-                        'sprite': f'./assets/sprites/{data['pokedex_id']}.png',
+                        'sprite': f'assets/sprites/{data['pokedex_id']}.png',
                         'wilds': []
                     }
 
@@ -778,11 +801,16 @@ def create_zones(request):
 @csrf_exempt
 def routes_from_game(request, game_id):
     if request.method == 'GET':
+        datas = []
         game = Game.objects.get(id=game_id)
-        game_region = game.associated_regions.all()
-        routes_found = game_region.routes.all()
-        serializer = RouteSerializer(routes_found, many=True, context={ 'request': Request(request) })
-        if (serializer.is_valid()):
-            return JsonResponse(serializer.data)
+        games_regions = game.associated_regions.all()
+
+        for gr in games_regions:
+            routes_found = gr.routes.all()
+            for r in routes_found:
+                datas.append(r)
+        
+        serializer = RouteSerializer(datas, many=True, context={ 'request': Request(request) })
+        return JsonResponse(serializer.data, safe=False)
         
     return JsonResponse(serializer.errors, status=400)

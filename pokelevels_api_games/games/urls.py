@@ -19,5 +19,5 @@ urlpatterns = [
     path('fill_species/', views.fill_species),
     path('fill_xp_species/', views.fill_xp_species),
     path('create_zones/', views.create_zones),
-    path('routes_from_game/<int:game_id>', views.routes_from_game)
+    path('routes_from_game/<int:game_id>/', views.routes_from_game)
 ]

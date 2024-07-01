@@ -20,6 +20,9 @@ class Specie(models.Model):
     xp = models.IntegerField(null=True)
     xp1_4 = models.IntegerField(null=True)
 
+    def __str__(self) -> str:
+        return self.name
+
 class Region(models.Model):
     name = models.CharField(max_length=50)
 
@@ -39,7 +42,7 @@ class Route(models.Model):
     game_region = models.ForeignKey(GameRegion, on_delete=models.CASCADE, related_name='routes')
 
     def __str__(self) -> str:
-        return f"{self.name} -> Pokémon {self.game_region.game.name}"
+        return f"{self.name} -> {self.game_region.game}"
 
 class Wild(models.Model):
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='wilds')
@@ -55,11 +58,24 @@ class Wild(models.Model):
                                 ('sr', 'Super Rod')
                             ]
     )
-    morning = models.BooleanField(default=True)
-    day = models.BooleanField(default=True)
-    night = models.BooleanField(default=True)
+
+    time = models.CharField(max_length=1, default='a',
+                            choices=[
+                                ('a', 'All'),
+                                ('m', 'Morning'),
+                                ('d', 'Day'),
+                                ('n', 'Night')
+                            ]
+    )
+
+    def __str__(self) -> str:
+        return f"{self.id} -> {self.specie} lvl {self.lvl} : {self.route} ({self.probability} %)"
 
 class Access(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='accesses')
     number = models.IntegerField()
     name = models.CharField(max_length=200)
+
+    def __str__(self):
+        return f'{self.number} : {self.name} ({self.game})'
+    
