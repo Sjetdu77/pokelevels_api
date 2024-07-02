@@ -69,7 +69,7 @@ class Wild(models.Model):
     )
 
     def __str__(self) -> str:
-        return f"{self.id} -> {self.specie} lvl {self.lvl} : {self.route} ({self.probability} %)"
+        return f"{self.id} -> {self.specie} lvl {self.lvl} on {self.mode} : {self.route} ({self.probability} %)"
 
 class Access(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='accesses')

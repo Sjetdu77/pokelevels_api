@@ -22,6 +22,8 @@ def games(request):
     
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
+        data['associated_regions'] = []
+        data['accesses'] = []
         serializer = GameSerializer(data=data, context={ 'request': Request(request) })
         if (serializer.is_valid()):
             serializer.save()
@@ -63,6 +65,7 @@ def species(request):
     
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
+        data['wilds'] = []
         serializer = SpecieSerializer(data=data, context={ 'request': Request(request) })
         if (serializer.is_valid()):
             serializer.save()
@@ -124,6 +127,7 @@ def routes(request):
     
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
+        data['wilds'] = []
         serializer = RouteSerializer(data=data, context={ 'request': Request(request) })
         if (serializer.is_valid()):
             serializer.save()
@@ -149,7 +153,7 @@ def route_detail(request, pk):
         except: data['name'] = route.name
 
         try: data['game_region']
-        except: data['game_region'] = f"http://127.0.0.1:8000/api/games_regions/{route.game_region.id}/"
+        except: data['game_region'] = route.game_region.id
 
         try: data['wilds']
         except:
@@ -176,7 +180,10 @@ def wilds(request):
     if (request.method == 'GET'):
         wilds = Wild.objects.all()
         serializer = WildSerializer(wilds, many=True, context={ 'request': Request(request) })
-        return JsonResponse(serializer.data, safe=False)
+        allWilds = {}
+        for aWild in serializer.data:
+            allWilds[aWild['id']] = aWild
+        return JsonResponse(allWilds)
     
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
@@ -267,6 +274,7 @@ def regions(request):
     
     elif (request.method == 'POST'):
         data = JSONParser().parse(request)
+        data['associated_games'] = []
         serializer = RegionSerializer(data=data, context={ 'request': Request(request) })
         if (serializer.is_valid()):
             serializer.save()
@@ -349,6 +357,7 @@ def accesses(request):
     
     elif request.method == "POST":
         data = JSONParser().parse(request)
+        data['routes'] = []
         serializer = AccessSerializer(data=data, context={ 'request': Request(request) })
         if (serializer.is_valid()):
             serializer.save()
